@@ -1,5 +1,9 @@
 package module1
 
+import module1.subtyping.adt.case_classes.Person
+import module1.subtyping.adt.sealed_traits.Card.Spades
+import module1.subtyping.type_classes.JsValue.{JsNull, JsNumber, JsString}
+
 
 object subtyping {
 
@@ -31,12 +35,16 @@ object subtyping {
    *
    */
 
+   val t1: IsSubtypeOf[Car, Vehicle] = ???
+
 
   /**
    *
    * С помощью типа IsSubtypeOf выразить отношение Car и Mustang
    *
    */
+
+  val t2: IsSupertypeOf[Car, Mustang.type] = ???
 
 
   /**
@@ -45,36 +53,40 @@ object subtyping {
    *
    */
 
+  val t3: IsSupertypeOf[Vehicle, Harley.type] = ???
+
 
   /**
    * В этом примере вам нужно правильно выбрать оператор отношения,
    * чтобы среди идущих ниже выражений, те которые корректны по смыслу компилировались, а остальные нет
    */
 
-  def isInstanceOf[A, B](a: A): Unit = ???
+  def isInstanceOf[A, B >: A](a: A): Unit = ???
 
 
 
 
   lazy val mustCompile1    = isInstanceOf[Mustang.type, Car](Mustang)
   lazy val mustCompile2    = isInstanceOf[Harley.type, Moto](Harley)
-  lazy val mustNotCompile1 = isInstanceOf[Mustang.type, Moto](Mustang)
-  lazy val mustNotCompile2 = isInstanceOf[Harley.type, Car](Harley)
+  // lazy val mustNotCompile1 = isInstanceOf[Mustang.type, Moto](Mustang)
+  // lazy val mustNotCompile2 = isInstanceOf[Harley.type, Car](Harley)
 
 
 
-  trait Box[T] {
+  trait Box[+T] {
     def get: T
+    def put[TT >: T](v: TT): Unit
   }
 
-  // val a : IsSubtypeOf[Box[Car], Box[Vehicle]] = ???
+  val a : IsSubtypeOf[Box[Car], Box[Vehicle]] = ???
 
 
-  trait Consumer[T] {
+  trait Consumer[-T] {
     def consume(v: T): Unit
+    def produce[TT <: T](): TT
   }
 
-  //val b : IsSubtypeOf[Consumer[Car], Consumer[Vehicle]] = ???
+  val b : IsSupertypeOf[Consumer[Car], Consumer[Vehicle]] = ???
 
 
 
@@ -91,7 +103,11 @@ object subtyping {
        * который позволит закодировать все возможные комбинации значений типов А и В
        */
 
-      // Unit * Boolean
+
+      // Int * Boolean ()  true false 2^32 * 2
+
+      // () true
+      // () false
 
 
       /**
@@ -101,13 +117,17 @@ object subtyping {
        * красивое строковое представление
        *
        */
+       type ProductUnitBoolean = (Unit, Boolean)
+
+       val v1 : ProductUnitBoolean = ((), true)
+       val v2 : ProductUnitBoolean = ((), false)
 
 
       /**
        * Реализовать тип Person который будет содержать имя и возраст
        */
 
-      type Person = TODO
+      type Person = (String, Int)
 
 
       /**
@@ -115,7 +135,11 @@ object subtyping {
        *  Реализовать тип `CreditCard` который может содержать номер (String),
        *  дату окончания (java.time.YearMonth), имя (String), код безопастности (Short)
        */
-      type CreditCard = TODO
+      type CreditCard = (String, java.time.YearMonth, String, Short)
+
+      val person: Person = ("Alex", 36)
+      person._1 // name
+      person._2 // age
     }
 
     object case_classes {
@@ -127,11 +151,16 @@ object subtyping {
 
       val tonyStark: Person = Person("Tony Stark", 42)
 
+
+      case class CreditCard(number: String, expireDate: java.time.YearMonth, name:String, cvc: Short)
+
       /**
        * используя паттерн матчинг напечатать имя и возраст
        */
 
-       def printNameAndAge: Unit = TODO
+       def printNameAndAge: Unit = tonyStark match {
+         case Person(n, _) => println(s"$n, ")
+       }
 
 
       final case class Employee(name: String, address: Address)
@@ -143,7 +172,9 @@ object subtyping {
        * воспользовавшись паттерн матчингом напечатать номер из поля адрес
        */
 
-       // alex match
+       alex match {
+         case Employee(_, Address(_, number)) => println(s"$number")
+       }
 
 
       /**
@@ -152,6 +183,11 @@ object subtyping {
        * 1. Имя должно соотвествовать Alex
        * 2. Все остальные
        */
+
+       alex match {
+         case Employee("Alex",  _) =>
+         case _ =>
+       }
 
 
       /**
@@ -167,6 +203,10 @@ object subtyping {
        * 2. Все остальные
        */
 
+      alex match {
+        case Employee(name,  _) if name.startsWith("A") =>  ???
+        case _ =>
+      }
 
       /**
        *
@@ -175,11 +215,22 @@ object subtyping {
        * так и внутри кейса
        */
 
-
+      alex match {
+        case e @ Employee(_,  _) if e.name.startsWith("A") =>  ???
+        case _ =>
+      }
 
       /**
        * Мы можем использовать вертикальную черту `|` для матчинга на альтернативы
        */
+
+       val x: Int = ???
+       x match {
+         case 1 | 2 | 3 => ???
+         case _ => ???
+       }
+
+
     }
 
 
@@ -192,7 +243,7 @@ object subtyping {
        * который позволит закодировать все значения типа A и все значения типа B
        */
 
-      // Unit + Boolean
+      // Unit + Boolean  () | true | false
 
 
       /**
@@ -201,21 +252,22 @@ object subtyping {
        * Иммутабелен
        */
 
-      type IntOrString = TODO
+      type IntOrString = Either[Int, String]
 
       /**
        * Реализовать экземпляр типа IntOrString с помощью конструктора Right(_)
        */
-      val intOrString: IntOrString = TODO
+      val intOrString: IntOrString = Right("")
 
 
       /**\
        * Реализовать тип PaymentMethod который может быть представлен одной из альтернатив
        */
-      type PaymentMethod = TODO
+      type PaymentMethod = Either[CreditCard, Either[WireTransfer, Cash]]
 
       final case class CreditCard()
       final case class WireTransfer()
+      final case class Cash()
 
     }
 
@@ -240,6 +292,18 @@ object subtyping {
        * Написать паттерн матчинг на 10 пику, и на все остальное
        */
 
+      val Person(a, b) = Person("", 1)
+
+      val M = "Hello"
+
+      val str: String = ???
+      str match {
+        case M =>
+      }
+      card match {
+        case Spades(10) => println()
+        case _ => println()
+      }
 
       /**
        * Написать паттерн матчинг который матчит карты номиналом >= 10
@@ -280,6 +344,56 @@ object subtyping {
       final case class JsNumber(get: Double) extends JsValue
       final case object JsNull extends JsValue
     }
+
+
+    trait JsonWriter[T]{
+      def write(v: T): JsValue
+    }
+
+    object JsonInstances {
+      implicit val strJson = new JsonWriter[String] {
+        override def write(v: String): JsValue = JsString(v)
+      }
+
+      implicit val intJson = new JsonWriter[Int] {
+        override def write(v: Int): JsValue = JsNumber(v)
+      }
+
+      implicit def optInstance[A](implicit jsonWriter: JsonWriter[A]) = new JsonWriter[Option[A]] {
+        override def write(v: Option[A]): JsValue = v match {
+          case Some(v) => jsonWriter.write(v)
+          case None => JsNull
+        }
+      }
+
+    }
+
+    object JsonSyntax {
+      implicit class jsonOps[A](v: A){
+        def toJson(implicit jsonWriter: JsonWriter[A]) = jsonWriter.write(v)
+      }
+    }
+
+
+    object Json{
+      def toJson[T](v: T)(implicit jsonWriter: JsonWriter[T]): JsValue = jsonWriter.write(v)
+    }
+
+    import JsonInstances._
+    import JsonSyntax._
+
+    val jsString: JsValue = Json.toJson("Hello")
+    val jsNumber: JsValue = Json.toJson(22)
+
+    val jsString2: JsValue = "Hello".toJson
+    val jsN: JsValue = 22.toJson
+
+    Option(22).toJson
+
+
+
+
+
 
 
     /**
